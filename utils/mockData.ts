@@ -26,7 +26,7 @@ export const loadLeagueData = async (): Promise<LeagueData> => {
   try {
       // Use import.meta.env.BASE_URL to ensure correct path in production
       const baseUrl = import.meta.env.BASE_URL;
-      const DATA_VERSION = "v13"; // Update this when you change the filename
+      const DATA_VERSION = "v14"; // Update this when you change the filename
       const dataUrl = baseUrl.endsWith('/') ? `${baseUrl}league_data_${DATA_VERSION}.json` : `${baseUrl}/league_data_${DATA_VERSION}.json`;
       
       const response = await fetch(dataUrl, { cache: "no-cache" });
