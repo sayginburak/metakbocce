@@ -1,7 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { Tab, LeagueData } from './types';
-import { loadLeagueData, recalculateStandings } from './utils/mockData';
-import Standings from './components/Standings';
+import {
+  loadLeagueData,
+  recalculateStandings,
+  storeSeasonId,
+  getStoredSeasonId,
+} from './utils/mockData';
+import { SEASONS } from './utils/seasons';
+import StandingsPanel from './components/StandingsPanel';
 import Schedule from './components/Schedule';
 import PlayerDetail from './components/PlayerDetail';
 import { LayoutDashboard, CalendarDays, Sun, Moon } from 'lucide-react';
@@ -9,6 +15,7 @@ import { LayoutDashboard, CalendarDays, Sun, Moon } from 'lucide-react';
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>(Tab.STANDINGS);
   const [leagueData, setLeagueData] = useState<LeagueData | null>(null);
+  const [seasonId, setSeasonId] = useState(() => getStoredSeasonId());
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     if (typeof window !== 'undefined') {
@@ -80,21 +87,30 @@ const App: React.FC = () => {
     setTheme(prev => prev === 'dark' ? 'light' : 'dark');
   };
 
-  // Initialize Data
+  // Load season data when season changes
   useEffect(() => {
+    let cancelled = false;
     const init = async () => {
-        const data = await loadLeagueData();
-        // Calculate standings from the JSON data
-        if (data.players.length > 0) {
-            const players = recalculateStandings(data);
-            setLeagueData({ ...data, players });
-        } else {
-             // Handle empty state if load fails
-             setLeagueData(data);
-        }
+      const data = await loadLeagueData(seasonId);
+      if (cancelled) return;
+      if (data.players.length > 0) {
+        const players = recalculateStandings(data);
+        setLeagueData({ ...data, players });
+      } else {
+        setLeagueData(data);
+      }
     };
     init();
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [seasonId]);
+
+  const handleSeasonChange = (nextId: string) => {
+    storeSeasonId(nextId);
+    setSeasonId(nextId);
+    setSelectedPlayerId(null);
+  };
 
   const handlePlayerClick = (playerId: string) => {
     setSelectedPlayerId(playerId);
@@ -126,24 +142,43 @@ const App: React.FC = () => {
     <div className="min-h-screen bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 flex flex-col print:block print:h-auto print:bg-white print:text-black print:min-h-0 transition-colors">
       {/* Header */}
       <header className={`sticky top-0 z-50 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 print:hidden transition-all duration-300 ${mobileHeaderHidden ? '-translate-y-full md:translate-y-0' : 'translate-y-0'}`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-20">
+        <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
+          <div className="flex items-start md:items-center justify-between gap-2 md:h-20 py-2.5 md:py-0">
             <div 
-              className="flex items-center gap-3 cursor-pointer"
+              className="flex items-start md:items-center gap-2 md:gap-3 cursor-pointer min-w-0 flex-1"
               onClick={() => { setSelectedPlayerId(null); setActiveTab(Tab.STANDINGS); }}
             >
-              <div className="p-1.5 rounded-xl">
-                <img src={logoSrc} alt="Metak Logo" className="w-10 h-10 object-contain" />
+              <div className="p-1 md:p-1.5 rounded-xl shrink-0">
+                <img src={logoSrc} alt="Metak Logo" className="w-8 h-8 md:w-10 md:h-10 object-contain" />
               </div>
-              <div>
-                <h1 className="text-xl font-bold bg-gradient-to-r from-emerald-600 to-cyan-600 dark:from-emerald-400 dark:to-cyan-400 bg-clip-text text-transparent">
-                  Metak 2025-2026
+              <div className="min-w-0 pt-0.5 md:pt-0">
+                <h1 className="text-base md:text-xl font-bold bg-gradient-to-r from-emerald-600 to-cyan-600 dark:from-emerald-400 dark:to-cyan-400 bg-clip-text text-transparent leading-snug break-words">
+                  {leagueData.leagueName ?? 'Metak'}
                 </h1>
-                <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-widest font-semibold">Kış Dart Ligi</p>
+                {leagueData.leagueSubtitle ? (
+                  <p className="text-[10px] md:text-xs text-slate-500 dark:text-slate-400 md:uppercase tracking-wide md:tracking-widest font-semibold leading-snug break-words mt-0.5">
+                    {leagueData.leagueSubtitle}
+                  </p>
+                ) : null}
               </div>
             </div>
             
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-1.5 sm:gap-4 shrink-0 pt-0.5 md:pt-0">
+              <label className="print:hidden hidden md:flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400">
+                <span className="hidden lg:inline">Sezon</span>
+                <select
+                  value={seasonId}
+                  onChange={(e) => handleSeasonChange(e.target.value)}
+                  aria-label="Sezon seç"
+                  className="text-sm rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-2 py-1.5 text-slate-800 dark:text-slate-100 max-w-[180px]"
+                >
+                  {SEASONS.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <nav className="hidden md:flex space-x-2 items-center">
                 <button
                   onClick={() => switchTab(Tab.STANDINGS)}
@@ -169,19 +204,37 @@ const App: React.FC = () => {
 
               <button 
                 onClick={toggleTheme}
-                className="p-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                className="p-1.5 md:p-2 rounded-lg text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0"
                 title="Temayı Değiştir"
               >
                 {theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
               </button>
             </div>
           </div>
+          {/* Full-width season row on small screens — avoids squashing the title */}
+          <div className="md:hidden pb-2 print:hidden">
+            <label className="block w-full">
+              <span className="sr-only">Sezon seç</span>
+              <select
+                value={seasonId}
+                onChange={(e) => handleSeasonChange(e.target.value)}
+                aria-label="Sezon seç"
+                className="w-full text-sm rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-slate-800 dark:text-slate-100"
+              >
+                {SEASONS.map((s) => (
+                  <option key={s.id} value={s.id}>
+                    {s.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
         </div>
       </header>
 
       {/* Mobile Navigation Bottom Bar */}
       <div className={`md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 z-50 px-4 pb-safe print:hidden transition-all duration-300 ${mobileNavHidden ? 'translate-y-full' : 'translate-y-0'}`}>
-        <div className="flex justify-around py-3">
+        <div className="flex justify-around py-2 sm:py-3">
           <button onClick={() => switchTab(Tab.STANDINGS)} className={`flex flex-col items-center gap-1 ${activeTab === Tab.STANDINGS ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-500'}`}>
             <LayoutDashboard className="w-6 h-6" />
             <span className="text-[10px] font-medium">Puan Durumu</span>
@@ -194,7 +247,7 @@ const App: React.FC = () => {
       </div>
 
       {/* Main Content */}
-      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 mb-20 md:mb-8 print:p-0 print:m-0 print:w-full print:max-w-none print:block">
+      <main className="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-4 sm:py-8 mb-20 md:mb-8 print:p-0 print:m-0 print:w-full print:max-w-none print:block">
         <div className="animate-in fade-in slide-in-from-bottom-4 duration-500 print:animate-none">
           {selectedPlayerId && selectedPlayer ? (
              <PlayerDetail 
@@ -205,8 +258,16 @@ const App: React.FC = () => {
              />
           ) : (
              <>
-               {activeTab === Tab.STANDINGS && <Standings players={leagueData.players} onPlayerClick={handlePlayerClick} />}
-               {activeTab === Tab.SCHEDULE && <Schedule data={leagueData} onPlayerClick={handlePlayerClick} />}
+               {activeTab === Tab.STANDINGS && (
+                 <StandingsPanel
+                   key={seasonId}
+                   data={leagueData}
+                   onPlayerClick={handlePlayerClick}
+                 />
+               )}
+               {activeTab === Tab.SCHEDULE && (
+                 <Schedule key={seasonId} data={leagueData} onPlayerClick={handlePlayerClick} />
+               )}
              </>
           )}
         </div>

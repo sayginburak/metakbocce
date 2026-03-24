@@ -1,3 +1,8 @@
+export interface LeagueGroup {
+  id: string;
+  label: string;
+  playerIds: string[];
+}
 
 export interface Player {
   id: string;
@@ -34,6 +39,11 @@ export interface LeagueData {
   players: Player[];
   schedule: Week[];
   currentWeek: number;
+  leagueName?: string;
+  leagueSubtitle?: string;
+  groups?: LeagueGroup[];
+  /** Highlight top N rows in group standings (e.g. 8 for play-offs) */
+  playOffSpots?: number;
 }
 
 export enum Tab {

@@ -1,7 +1,8 @@
 
-import React, { useState, useRef } from 'react';
-import { LeagueData, Week } from '../types';
+import React, { useState, useMemo, useEffect } from 'react';
+import { LeagueData } from '../types';
 import { Calendar, ChevronLeft, ChevronRight, Printer } from 'lucide-react';
+import LeagueGroupTabs from './LeagueGroupTabs';
 
 interface ScheduleProps {
   data: LeagueData;
@@ -15,10 +16,33 @@ const Schedule: React.FC<ScheduleProps> = ({ data, onPlayerClick }) => {
       if (data.schedule.length === 0) return 0;
       return Math.min(data.currentWeek, data.schedule.length - 1);
   });
-  
-  const printRef = useRef<HTMLDivElement>(null);
+
+  const [activeGroupId, setActiveGroupId] = useState(() => data.groups?.[0]?.id ?? 'all');
+
+  // Keep index valid when season data swaps in (async load) or schedule length changes.
+  useEffect(() => {
+    setCurrentWeekIndex((prev) => {
+      if (data.schedule.length === 0) return 0;
+      return Math.min(prev, data.schedule.length - 1);
+    });
+  }, [data.schedule.length]);
 
   const currentWeek = data.schedule[currentWeekIndex];
+
+  const leaguePrintLabel = [data.leagueName, data.leagueSubtitle].filter(Boolean).join(' — ') || 'Metak Dart Ligi';
+
+  const activeGroup = data.groups?.find((g) => g.id === activeGroupId);
+
+  // Must run unconditionally — never place hooks after an early return.
+  const weekMatches = useMemo(() => {
+    const cw = data.schedule[currentWeekIndex];
+    if (!cw) return [];
+    const g = data.groups?.find(x => x.id === activeGroupId);
+    if (!g) return cw.matches;
+    return cw.matches.filter(
+      m => g.playerIds.includes(m.player1Id) && g.playerIds.includes(m.player2Id)
+    );
+  }, [data.schedule, currentWeekIndex, data.groups, activeGroupId]);
 
   if (!currentWeek) {
       return <div className="text-center p-8 text-slate-500">Fikstür verisi bulunamadı.</div>;
@@ -27,13 +51,13 @@ const Schedule: React.FC<ScheduleProps> = ({ data, onPlayerClick }) => {
   const getPlayerName = (id: string) => data.players.find(p => p.id === id)?.name || "Bilinmiyor";
 
   // Split matches into 3 rounds (assuming 3 matches per player per week)
-  const totalMatches = currentWeek.matches.length;
-  const matchesPerRound = Math.ceil(totalMatches / 3);
+  const totalMatches = weekMatches.length;
+  const matchesPerRound = Math.ceil(totalMatches / 3) || 1;
   
   const rounds = [];
   if (totalMatches > 0) {
       for (let i = 0; i < totalMatches; i += matchesPerRound) {
-        rounds.push(currentWeek.matches.slice(i, i + matchesPerRound));
+        rounds.push(weekMatches.slice(i, i + matchesPerRound));
       }
   } else {
       rounds.push([]); // Handle empty weeks gracefully
@@ -44,7 +68,7 @@ const Schedule: React.FC<ScheduleProps> = ({ data, onPlayerClick }) => {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 sm:space-y-6">
       {/* Print Only View */}
       <div className="hidden print:block w-full bg-white">
         {rounds.map((roundMatches, roundIndex) => (
@@ -56,6 +80,11 @@ const Schedule: React.FC<ScheduleProps> = ({ data, onPlayerClick }) => {
                     <div className="text-center">
                         <h1 className="text-2xl font-bold text-black mb-1">{currentWeek.name} Maç Programı</h1>
                         <p className="text-lg text-gray-600">{currentWeek.date}</p>
+                        {activeGroup ? (
+                          <p className="text-base font-bold text-black mt-2 tracking-wide">
+                            {activeGroup.label}
+                          </p>
+                        ) : null}
                     </div>
                     
                     <div className="border-b-2 border-black pb-2">
@@ -84,14 +113,24 @@ const Schedule: React.FC<ScheduleProps> = ({ data, onPlayerClick }) => {
                 
                 {/* Footer forced to bottom of page */}
                 <div className="text-center text-gray-500 text-xs border-t border-gray-300 pt-2">
-                    Metak 2025-2026 Kış Dart Ligi - {currentWeek.name} - Sayfa {roundIndex + 1}/{rounds.length}
+                    {leaguePrintLabel}
+                    {activeGroup ? ` — ${activeGroup.label}` : ''} — {currentWeek.name} — Sayfa {roundIndex + 1}/{rounds.length}
                 </div>
             </div>
         ))}
       </div>
 
+      {/* Group tabs (two-group seasons) */}
+      {data.groups && data.groups.length > 0 && (
+        <LeagueGroupTabs
+          groups={data.groups}
+          activeGroupId={activeGroupId}
+          onGroupChange={setActiveGroupId}
+        />
+      )}
+
       {/* Week Navigator */}
-      <div className="print:hidden flex items-center justify-between bg-white dark:bg-slate-800 p-4 rounded-xl shadow-sm dark:shadow-lg border border-slate-200 dark:border-slate-700 transition-colors">
+      <div className="print:hidden flex items-center justify-between bg-white dark:bg-slate-800 p-3 sm:p-4 rounded-xl shadow-sm dark:shadow-lg border border-slate-200 dark:border-slate-700 transition-colors">
         <button 
           onClick={() => setCurrentWeekIndex(prev => Math.max(0, prev - 1))}
           disabled={currentWeekIndex === 0}
