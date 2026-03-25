@@ -75,24 +75,20 @@ const assert = (cond, msg) => {
   if (!cond) throw new Error(msg);
 };
 
-// Sample scores in week 1: b26a_p1 vs b26a_p16 => 3-2, b26b_p1 vs b26b_p16 => 4-1
+// Spot-check: Grup A hafta 1 tamam (24 maç); Grup B henüz skorsuz
 const alper = playersById.get("b26a_p1");
 const zeynep = playersById.get("b26a_p16");
 const ali = playersById.get("b26b_p1");
 const tuncay = playersById.get("b26b_p16");
 
-assert(alper.points === 2 && alper.won === 1 && alper.played === 1, `Alper (A): ${JSON.stringify(alper)}`);
-assert(zeynep.points === 1 && zeynep.lost === 1 && zeynep.legsWon === 2, `Zeynep (A): ${JSON.stringify(zeynep)}`);
-assert(ali.points === 2 && ali.won === 1 && ali.legsWon === 4, `Ali (B): ${JSON.stringify(ali)}`);
-assert(tuncay.points === 1 && tuncay.lost === 1, `Tuncay (B): ${JSON.stringify(tuncay)}`);
+assert(alper.points === 6 && alper.won === 3 && alper.played === 3, `Alper (A): ${JSON.stringify(alper)}`);
+assert(zeynep.points === 3 && zeynep.lost === 3 && zeynep.legsWon === 1, `Zeynep (A): ${JSON.stringify(zeynep)}`);
+assert(ali.played === 0 && tuncay.played === 0, `Grup B henüz oynanmadı: ali=${ali.played} tuncay=${tuncay.played}`);
 
-// Everyone else still 0 played for these tests
-let othersPlayed = 0;
-for (const [id, s] of playersById) {
-  if (!["b26a_p1", "b26a_p16", "b26b_p1", "b26b_p16"].includes(id)) othersPlayed += s.played;
+let grupBPlayed = 0;
+for (const id of raw.groups.find((g) => g.id === "b").playerIds) {
+  grupBPlayed += playersById.get(id).played;
 }
-assert(othersPlayed === 0, "Unexpected stats on other players");
+assert(grupBPlayed === 0, `Grup B beklenen 0 played, got ${grupBPlayed}`);
 
-console.log("verify-bahar-scores: OK (sample matches parse and standings rules apply).");
-console.log("  Grup A: Alper 3-2 Zeynep → Alper +2p, Zeynep +1p");
-console.log("  Grup B: Ali 4-1 Tuncay → Ali +2p, Tuncay +1p");
+console.log("verify-bahar-scores: OK (Grup A week 1 scores parse; standings rules apply).");
