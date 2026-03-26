@@ -75,7 +75,7 @@ const assert = (cond, msg) => {
   if (!cond) throw new Error(msg);
 };
 
-// Spot-check: Grup A hafta 1 tamam (24 maç); Grup B henüz skorsuz
+// Spot-check: Grup A ve B hafta 1 tamam (24+24 maç)
 const alper = playersById.get("b26a_p1");
 const zeynep = playersById.get("b26a_p16");
 const ali = playersById.get("b26b_p1");
@@ -83,12 +83,19 @@ const tuncay = playersById.get("b26b_p16");
 
 assert(alper.points === 6 && alper.won === 3 && alper.played === 3, `Alper (A): ${JSON.stringify(alper)}`);
 assert(zeynep.points === 3 && zeynep.lost === 3 && zeynep.legsWon === 1, `Zeynep (A): ${JSON.stringify(zeynep)}`);
-assert(ali.played === 0 && tuncay.played === 0, `Grup B henüz oynanmadı: ali=${ali.played} tuncay=${tuncay.played}`);
+assert(
+  ali.points === 6 && ali.won === 3 && ali.played === 3 && ali.legsWon === 6 && ali.legsLost === 0,
+  `Ali Ekber (B): ${JSON.stringify(ali)}`
+);
+assert(
+  tuncay.points === 5 && tuncay.won === 2 && tuncay.lost === 1 && tuncay.played === 3,
+  `Tuncay (B): ${JSON.stringify(tuncay)}`
+);
 
 let grupBPlayed = 0;
 for (const id of raw.groups.find((g) => g.id === "b").playerIds) {
   grupBPlayed += playersById.get(id).played;
 }
-assert(grupBPlayed === 0, `Grup B beklenen 0 played, got ${grupBPlayed}`);
+assert(grupBPlayed === 48, `Grup B hafta 1: 16 oyuncu × 3 maç = 48, got ${grupBPlayed}`);
 
-console.log("verify-bahar-scores: OK (Grup A week 1 scores parse; standings rules apply).");
+console.log("verify-bahar-scores: OK (Grup A+B week 1 scores parse; standings rules apply).");
