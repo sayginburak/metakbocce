@@ -44,16 +44,23 @@ function applyStats(playersById, schedule) {
       p2.legsLost += m.score1;
       const loserPoints = m.isDefaultLoss ? 0 : 1;
       const winnerPoints = 2;
-      if (m.score1 > m.score2) {
+      const drawPoints = 1;
+      if (m.score1 === 0 && m.score2 === 0) {
+        p1.points += drawPoints;
+        p2.points += drawPoints;
+      } else if (m.score1 > m.score2) {
         p1.won += 1;
         p1.points += winnerPoints;
         p2.lost += 1;
         p2.points += loserPoints;
-      } else {
+      } else if (m.score2 > m.score1) {
         p2.won += 1;
         p2.points += winnerPoints;
         p1.lost += 1;
         p1.points += loserPoints;
+      } else {
+        p1.points += drawPoints;
+        p2.points += drawPoints;
       }
     }
   }
@@ -69,7 +76,7 @@ const playersById = new Map(
   ])
 );
 
-applyStats(playersById, raw.weeks);
+applyStats(playersById, raw.weeks.filter((w) => w.id === 1));
 
 const assert = (cond, msg) => {
   if (!cond) throw new Error(msg);

@@ -124,7 +124,8 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, data, onBack, onPla
                 const opponent = getOpponent(match);
                 const scores = getOpponentScore(match);
                 const isPlayed = match.score1 !== null && match.score2 !== null;
-                const iWon = isPlayed ? scores.my! > scores.opp! : false;
+                const isDraw = isPlayed && scores.my === scores.opp;
+                const iWon = isPlayed && !isDraw && scores.my! > scores.opp!;
                 
                 return (
                     <div key={match.id} className="bg-white dark:bg-slate-800 p-3 rounded-lg border border-slate-200 dark:border-slate-700 flex flex-col sm:flex-row items-center justify-between gap-3 hover:bg-slate-50 dark:hover:bg-slate-750 transition-colors">
@@ -142,7 +143,7 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, data, onBack, onPla
                         {/* Matchup */}
                         <div className="flex items-center justify-center gap-4 flex-1 w-full sm:w-auto">
                              <div className="flex items-center justify-end flex-1">
-                                <span className={`font-bold text-right text-sm truncate transition-colors ${isPlayed ? (iWon ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400') : 'text-slate-900 dark:text-white'}`}>
+                                <span className={`font-bold text-right text-sm truncate transition-colors ${isPlayed ? (isDraw ? 'text-slate-600 dark:text-slate-300' : iWon ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400') : 'text-slate-900 dark:text-white'}`}>
                                     {player.name}
                                 </span>
                              </div>
@@ -156,7 +157,7 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, data, onBack, onPla
                                 className="flex items-center justify-start flex-1 cursor-pointer group"
                                 onClick={() => opponent && onPlayerClick(opponent.id)}
                              >
-                                <span className={`font-bold text-left text-sm truncate transition-colors ${isPlayed ? (!iWon ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400') : 'text-slate-600 dark:text-slate-300'} group-hover:text-emerald-600 dark:group-hover:text-emerald-400`}>
+                                <span className={`font-bold text-left text-sm truncate transition-colors ${isPlayed ? (isDraw ? 'text-slate-600 dark:text-slate-300' : iWon ? 'text-red-500 dark:text-red-400' : 'text-green-600 dark:text-green-400') : 'text-slate-600 dark:text-slate-300'} group-hover:text-emerald-600 dark:group-hover:text-emerald-400`}>
                                     {opponent?.name || 'Unknown'}
                                 </span>
                              </div>

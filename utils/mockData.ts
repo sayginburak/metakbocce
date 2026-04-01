@@ -147,17 +147,24 @@ export function applyMatchStats(data: LeagueData): Player[] {
 
           const loserPoints = match.isDefaultLoss ? 0 : 1;
           const winnerPoints = 2;
+          const drawPoints = 1;
 
-          if (match.score1 > match.score2) {
+          if (match.score1 === 0 && match.score2 === 0) {
+            p1.stats.points += drawPoints;
+            p2.stats.points += drawPoints;
+          } else if (match.score1 > match.score2) {
             p1.stats.won += 1;
             p1.stats.points += winnerPoints;
             p2.stats.lost += 1;
             p2.stats.points += loserPoints;
-          } else {
+          } else if (match.score2 > match.score1) {
             p2.stats.won += 1;
             p2.stats.points += winnerPoints;
             p1.stats.lost += 1;
             p1.stats.points += loserPoints;
+          } else {
+            p1.stats.points += drawPoints;
+            p2.stats.points += drawPoints;
           }
         }
       }
