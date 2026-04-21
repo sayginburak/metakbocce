@@ -41,6 +41,10 @@
               size: A4 portrait;
               margin: 4mm 6mm 8mm;
           }
+          @page finalsLandscape {
+              size: A4 landscape;
+              margin: 6mm;
+          }
           body {
               background: white !important;
               color: black !important;
@@ -81,6 +85,190 @@
               display: flex;
               flex-direction: column;
               gap: 3mm;
+          }
+
+          /* ---------------- Finals bracket (landscape) ---------------- */
+          .print-finals-page {
+              page: finalsLandscape;
+              display: flex;
+              flex-direction: column;
+              height: 198mm; /* A4 landscape usable height */
+              gap: 3mm;
+              color: #111 !important;
+              background: white;
+              break-inside: avoid;
+              page-break-inside: avoid;
+          }
+          .print-finals-header {
+              text-align: center;
+              border-bottom: 0.6pt solid #222;
+              padding-bottom: 2mm;
+          }
+          .print-finals-header h1 {
+              font-size: 18pt;
+              font-weight: 700;
+              margin: 0;
+          }
+          .print-finals-header .print-finals-sub {
+              font-size: 9pt;
+              color: #444;
+              margin-top: 0.5mm;
+          }
+
+          .print-bracket {
+              flex: 1;
+              display: flex;
+              align-items: stretch;
+              min-height: 0;
+          }
+          .print-round {
+              flex: 1;
+              display: flex;
+              flex-direction: column;
+              min-width: 0;
+          }
+          .print-round-title {
+              text-align: center;
+              font-size: 9pt;
+              font-weight: 700;
+              text-transform: uppercase;
+              letter-spacing: 0.5pt;
+              border: 0.6pt solid #222;
+              border-radius: 2mm;
+              padding: 1mm 2mm;
+              margin: 0 8mm 3mm;
+              background: #f3f3f3;
+          }
+          .print-round-matches {
+              flex: 1;
+              display: flex;
+              flex-direction: column;
+              min-height: 0;
+          }
+          /* Each slot takes an equal share of the round's height so pair join
+             points still align with the next round's match centers, but the
+             visible card inside stays a fixed size (extra space = empty). */
+          .print-bracket-match-slot {
+              flex: 1;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              padding: 0 8mm;
+              position: relative;
+              min-height: 0;
+          }
+          .print-bracket-match {
+              width: 100%;
+              height: 18mm;
+              position: relative;
+              display: flex;
+              flex-direction: column;
+              justify-content: center;
+              border: 0.5pt solid #333;
+              border-radius: 1.5mm;
+              background: white;
+              padding: 1mm 2mm;
+              font-size: 8pt;
+              line-height: 1.2;
+              overflow: hidden;
+          }
+          .print-match-code {
+              font-size: 6.5pt;
+              font-weight: 700;
+              color: #666;
+              text-transform: uppercase;
+              letter-spacing: 0.4pt;
+              margin-bottom: 0.5mm;
+          }
+          .print-match-player {
+              display: flex;
+              align-items: center;
+              gap: 1.5mm;
+              padding: 0.3mm 0;
+          }
+          .print-match-player.win {
+              font-weight: 700;
+          }
+          .print-match-player.loss {
+              color: #666;
+          }
+          .print-match-seed {
+              display: inline-block;
+              min-width: 7mm;
+              padding: 0 1mm;
+              border: 0.4pt solid #888;
+              border-radius: 1mm;
+              font-size: 6.5pt;
+              text-align: center;
+              color: #444;
+              font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+              flex-shrink: 0;
+          }
+          .print-match-name {
+              flex: 1;
+              min-width: 0;
+              overflow: hidden;
+              text-overflow: ellipsis;
+              white-space: nowrap;
+          }
+          .print-match-score {
+              min-width: 5mm;
+              text-align: right;
+              font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+              font-weight: 700;
+          }
+
+          /* Outgoing L-shape from each slot (all rounds except last).
+             The slot (not the card) owns the connector so math stays
+             correct even when the card has a fixed, smaller height. */
+          .print-round:not(:last-child) .print-bracket-match-slot::after {
+              content: '';
+              position: absolute;
+              right: 0;
+              width: 8mm;
+              box-sizing: border-box;
+          }
+          .print-round:not(:last-child) .print-bracket-match-slot:nth-child(odd)::after {
+              top: 50%;
+              height: 50%;
+              border-top: 0.5pt solid #666;
+              border-right: 0.5pt solid #666;
+          }
+          .print-round:not(:last-child) .print-bracket-match-slot:nth-child(even)::after {
+              top: 0;
+              height: 50%;
+              border-right: 0.5pt solid #666;
+              border-bottom: 0.5pt solid #666;
+          }
+
+          /* Incoming horizontal feeder line for each non-first-round slot */
+          .print-round:not(:first-child) .print-bracket-match-slot::before {
+              content: '';
+              position: absolute;
+              left: 0;
+              top: 50%;
+              width: 6mm;
+              height: 0;
+              border-top: 0.5pt solid #666;
+          }
+          /* Arrowhead glyph pointing into each non-first-round match */
+          .print-bracket-arrow {
+              position: absolute;
+              left: -2mm;
+              top: 50%;
+              transform: translateY(-50%);
+              font-size: 7pt;
+              line-height: 1;
+              color: #555;
+              pointer-events: none;
+          }
+
+          .print-finals-footer {
+              text-align: center;
+              font-size: 7pt;
+              color: #555;
+              border-top: 0.4pt solid #999;
+              padding-top: 1.5mm;
           }
       }
     </style>

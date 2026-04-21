@@ -10,7 +10,8 @@ import { SEASONS } from './utils/seasons';
 import StandingsPanel from './components/StandingsPanel';
 import Schedule from './components/Schedule';
 import PlayerDetail from './components/PlayerDetail';
-import { LayoutDashboard, CalendarDays, Sun, Moon } from 'lucide-react';
+import Finals from './components/Finals';
+import { LayoutDashboard, CalendarDays, Sun, Moon, Trophy } from 'lucide-react';
 
 const App: React.FC = () => {
   const [activeTab, setActiveTab] = useState<Tab>(Tab.STANDINGS);
@@ -106,6 +107,18 @@ const App: React.FC = () => {
     };
   }, [seasonId]);
 
+  // When a new season is loaded, default to the Finals tab if it's available;
+  // otherwise fall back to Standings if the current tab isn't applicable.
+  useEffect(() => {
+    if (!leagueData) return;
+    if (leagueData.showFinals) {
+      setActiveTab(Tab.FINALS);
+    } else if (activeTab === Tab.FINALS) {
+      setActiveTab(Tab.STANDINGS);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leagueData?.showFinals, seasonId]);
+
   // Browser tab title follows loaded season (JSON leagueName / leagueSubtitle).
   useEffect(() => {
     if (!leagueData) return;
@@ -187,6 +200,18 @@ const App: React.FC = () => {
                 </select>
               </label>
               <nav className="hidden md:flex space-x-2 items-center">
+                {leagueData.showFinals && (
+                  <button
+                    onClick={() => switchTab(Tab.FINALS)}
+                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2
+                      ${activeTab === Tab.FINALS && !selectedPlayerId
+                          ? 'bg-amber-100 dark:bg-slate-800 text-amber-700 dark:text-amber-400 shadow-sm border border-amber-200 dark:border-slate-700'
+                          : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800/50'}`}
+                  >
+                    <Trophy className="w-4 h-4" />
+                    Finaller
+                  </button>
+                )}
                 <button
                   onClick={() => switchTab(Tab.STANDINGS)}
                   className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 flex items-center gap-2
@@ -242,6 +267,12 @@ const App: React.FC = () => {
       {/* Mobile Navigation Bottom Bar */}
       <div className={`md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 z-50 px-4 pb-safe print:hidden transition-all duration-300 ${mobileNavHidden ? 'translate-y-full' : 'translate-y-0'}`}>
         <div className="flex justify-around py-2 sm:py-3">
+          {leagueData.showFinals && (
+            <button onClick={() => switchTab(Tab.FINALS)} className={`flex flex-col items-center gap-1 ${activeTab === Tab.FINALS ? 'text-amber-600 dark:text-amber-400' : 'text-slate-500 dark:text-slate-500'}`}>
+              <Trophy className="w-6 h-6" />
+              <span className="text-[10px] font-medium">Finaller</span>
+            </button>
+          )}
           <button onClick={() => switchTab(Tab.STANDINGS)} className={`flex flex-col items-center gap-1 ${activeTab === Tab.STANDINGS ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-500 dark:text-slate-500'}`}>
             <LayoutDashboard className="w-6 h-6" />
             <span className="text-[10px] font-medium">Puan Durumu</span>
@@ -274,6 +305,9 @@ const App: React.FC = () => {
                )}
                {activeTab === Tab.SCHEDULE && (
                  <Schedule key={seasonId} data={leagueData} onPlayerClick={handlePlayerClick} />
+               )}
+               {activeTab === Tab.FINALS && leagueData.showFinals && (
+                 <Finals key={seasonId} data={leagueData} onPlayerClick={handlePlayerClick} />
                )}
              </>
           )}

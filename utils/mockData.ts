@@ -1,5 +1,5 @@
 
-import { LeagueData, LeagueGroup, Match, Player, Week } from "../types";
+import { FinalsData, FinalsMatch, FinalsRound, LeagueData, LeagueGroup, Match, Player, Week } from "../types";
 import { DEFAULT_SEASON_ID, getSeasonById, SEASON_STORAGE_KEY } from "./seasons";
 
 // Types defining the JSON structure
@@ -14,14 +14,38 @@ interface JsonWeek {
     matches: (string | number)[][];
 }
 
+interface JsonFinalsMatch {
+    player1?: string | null;
+    player2?: string | null;
+    player1Label?: string;
+    player2Label?: string;
+    score1?: number | null;
+    score2?: number | null;
+}
+
+interface JsonFinalsRound {
+    id?: string;
+    name: string;
+    matches?: (JsonFinalsMatch | (string | number | null)[])[];
+}
+
+interface JsonFinals {
+    title?: string;
+    subtitle?: string;
+    rounds?: JsonFinalsRound[];
+}
+
 interface JsonData {
     leagueName: string;
     leagueSubtitle?: string;
     currentWeek: number;
     playOffSpots?: number;
+    showFinals?: boolean;
+    finalsExcludedPlayerIds?: string[];
     players: JsonPlayer[];
     weeks: JsonWeek[];
     groups?: { id: string; label: string; playerIds: string[] }[];
+    finals?: JsonFinals;
 }
 
 function parseWeeks(rawWeeks: JsonWeek[]): Week[] {
@@ -62,6 +86,53 @@ function parseWeeks(rawWeeks: JsonWeek[]): Week[] {
   }));
 }
 
+function parseFinalsMatch(raw: JsonFinalsMatch | (string | number | null)[], roundId: string, index: number): FinalsMatch {
+  const id = `${roundId}_m${index}`;
+  if (Array.isArray(raw)) {
+    const player1Id = (raw[0] as string | null) ?? null;
+    const player2Id = (raw[1] as string | null) ?? null;
+    const score1 = raw.length >= 4 ? (raw[2] as number | null) ?? null : null;
+    const score2 = raw.length >= 4 ? (raw[3] as number | null) ?? null : null;
+    return {
+      id,
+      player1Id,
+      player2Id,
+      score1,
+      score2,
+      isCompleted: score1 !== null && score2 !== null,
+    };
+  }
+  const score1 = raw.score1 ?? null;
+  const score2 = raw.score2 ?? null;
+  return {
+    id,
+    player1Id: raw.player1 ?? null,
+    player2Id: raw.player2 ?? null,
+    player1Label: raw.player1Label,
+    player2Label: raw.player2Label,
+    score1,
+    score2,
+    isCompleted: score1 !== null && score2 !== null,
+  };
+}
+
+function parseFinals(raw: JsonFinals | undefined): FinalsData | undefined {
+  if (!raw) return undefined;
+  const rounds: FinalsRound[] = (raw.rounds ?? []).map((r, idx) => {
+    const roundId = r.id ?? `r${idx}`;
+    return {
+      id: roundId,
+      name: r.name,
+      matches: (r.matches ?? []).map((m, i) => parseFinalsMatch(m, roundId, i)),
+    };
+  });
+  return {
+    title: raw.title,
+    subtitle: raw.subtitle,
+    rounds,
+  };
+}
+
 function jsonToLeagueData(rawData: JsonData): LeagueData {
   const players: Player[] = rawData.players.map(p => ({
     id: p.id,
@@ -89,7 +160,10 @@ function jsonToLeagueData(rawData: JsonData): LeagueData {
     leagueName: rawData.leagueName,
     leagueSubtitle: rawData.leagueSubtitle,
     groups,
-    playOffSpots: rawData.playOffSpots
+    playOffSpots: rawData.playOffSpots,
+    showFinals: rawData.showFinals ?? false,
+    finalsExcludedPlayerIds: rawData.finalsExcludedPlayerIds,
+    finals: parseFinals(rawData.finals)
   };
 }
 
@@ -204,5 +278,191 @@ export function getStandingsByGroup(data: LeagueData): GroupStandings[] {
     groupId: g.id,
     label: g.label,
     players: sortStandings(base.filter(p => g.playerIds.includes(p.id)))
+  }));
+}
+
+export interface BracketMatch {
+  id: string;
+  code: string;
+  player1Id: string | null;
+  player2Id: string | null;
+  player1Label: string;
+  player2Label: string;
+  score1: number | null;
+  score2: number | null;
+  isCompleted: boolean;
+  winnerId: string | null;
+}
+
+export interface BracketRound {
+  id: string;
+  name: string;
+  matches: BracketMatch[];
+}
+
+function winnerOf(m: { player1Id: string | null; player2Id: string | null; score1: number | null; score2: number | null; isCompleted: boolean }): string | null {
+  if (!m.isCompleted || m.score1 == null || m.score2 == null) return null;
+  if (m.score1 > m.score2) return m.player1Id;
+  if (m.score2 > m.score1) return m.player2Id;
+  return null;
+}
+
+/**
+ * Single-letter prefix for a round's match codes.
+ * Used to build match IDs like s1..s8, ç1..ç4, y1..y2, f1.
+ */
+export function getRoundMatchPrefix(roundName: string): string {
+  if (roundName.startsWith("Son ")) return "s";
+  if (roundName === "Çeyrek Final") return "ç";
+  if (roundName === "Yarı Final") return "y";
+  if (roundName === "Final") return "f";
+  return "m";
+}
+
+/** Build a user-facing match code like "s1", "ç3", "y2", "f1" from round name + index. */
+export function getMatchCode(roundName: string, matchIdx: number): string {
+  return `${getRoundMatchPrefix(roundName)}${matchIdx + 1}`;
+}
+
+/**
+ * Build the finals bracket.
+ *
+ * Round 1 (Son 16) pairings are seeded from current group standings:
+ *   s1: 1A vs 8B, s2: 2A vs 7B, s3: 3A vs 6B, s4: 4A vs 5B,
+ *   s5: 5A vs 4B, s6: 6A vs 3B, s7: 7A vs 2B, s8: 8A vs 1B.
+ *
+ * Later rounds use a "top-half vs bottom-half" pairing so the strongest
+ * league-phase performers keep facing the weakest remaining opponents until
+ * the final. For n matches in the previous round, new match i pairs
+ * prev[i] with prev[i + n/2]:
+ *   Çeyrek Final: ç1 = s1 & s5, ç2 = s2 & s6, ç3 = s3 & s7, ç4 = s4 & s8.
+ *   Yarı Final:   y1 = ç1 & ç3, y2 = ç2 & ç4.
+ *   Final:        f1 = y1 & y2.
+ *
+ * Any results provided in data.finals.rounds[i].matches override the auto-derivation.
+ */
+export function getFinalsBracket(data: LeagueData, spots: number = 8): BracketRound[] {
+  const groupStandings = getStandingsByGroup(data);
+  const excluded = new Set(data.finalsExcludedPlayerIds ?? []);
+  const groupA = (groupStandings[0]?.players ?? []).filter(p => !excluded.has(p.id));
+  const groupB = (groupStandings[1]?.players ?? []).filter(p => !excluded.has(p.id));
+
+  const seedsA = groupA.slice(0, spots);
+  const seedsB = groupB.slice(0, spots);
+
+  const round1Name = spots === 8 ? 'Son 16' : `Son ${spots * 2}`;
+  const defaultRoundNames = [round1Name, 'Çeyrek Final', 'Yarı Final', 'Final'];
+
+  const totalRounds = Math.max(1, Math.ceil(Math.log2(spots * 2)));
+  const overrideRounds = data.finals?.rounds ?? [];
+
+  const rounds: BracketRound[] = [];
+
+  for (let r = 0; r < totalRounds; r++) {
+    const roundMatchCount = Math.pow(2, totalRounds - r - 1);
+    const override = overrideRounds[r];
+    const name = override?.name ?? defaultRoundNames[r] ?? `${r + 1}. Tur`;
+    const id = override?.id ?? `r${r + 1}`;
+
+    const matches: BracketRound['matches'] = [];
+    for (let i = 0; i < roundMatchCount; i++) {
+      let player1Id: string | null = null;
+      let player2Id: string | null = null;
+      let player1Label = '';
+      let player2Label = '';
+      let score1: number | null = null;
+      let score2: number | null = null;
+      let isCompleted = false;
+
+      if (r === 0) {
+        const aSeed = seedsA[i];
+        const bSeed = seedsB[spots - 1 - i];
+        player1Id = aSeed?.id ?? null;
+        player2Id = bSeed?.id ?? null;
+        player1Label = `${i + 1}A`;
+        player2Label = `${spots - i}B`;
+      } else {
+        // Top-half vs bottom-half pairing: match i of this round pulls
+        // prev[i] and prev[i + n/2], so seed #1 stays away from seed #2
+        // (and group A's #1 from group B's #1) as long as possible.
+        const prev = rounds[r - 1];
+        const prevHalf = prev.matches.length / 2;
+        const m1Idx = i;
+        const m2Idx = i + prevHalf;
+        const m1 = prev.matches[m1Idx];
+        const m2 = prev.matches[m2Idx];
+        player1Id = m1?.winnerId ?? null;
+        player2Id = m2?.winnerId ?? null;
+        player1Label = `${getMatchCode(prev.name, m1Idx)} Galibi`;
+        player2Label = `${getMatchCode(prev.name, m2Idx)} Galibi`;
+      }
+
+      const overrideMatch = override?.matches?.[i];
+      if (overrideMatch) {
+        if (overrideMatch.player1Id != null) player1Id = overrideMatch.player1Id;
+        if (overrideMatch.player2Id != null) player2Id = overrideMatch.player2Id;
+        if (overrideMatch.player1Label) player1Label = overrideMatch.player1Label;
+        if (overrideMatch.player2Label) player2Label = overrideMatch.player2Label;
+        score1 = overrideMatch.score1;
+        score2 = overrideMatch.score2;
+        isCompleted = overrideMatch.isCompleted;
+      }
+
+      const matchEntry: BracketMatch = {
+        id: overrideMatch?.id ?? `${id}_m${i}`,
+        code: getMatchCode(name, i),
+        player1Id,
+        player2Id,
+        player1Label,
+        player2Label,
+        score1,
+        score2,
+        isCompleted,
+        winnerId: null,
+      };
+      matchEntry.winnerId = winnerOf(matchEntry);
+      matches.push(matchEntry);
+    }
+
+    rounds.push({ id, name, matches });
+  }
+
+  return reorderRoundsForBracketDisplay(rounds);
+}
+
+/**
+ * Reorder matches within each round so that the two matches feeding the same
+ * next-round match are adjacent in the display. Generation order is kept
+ * logical (seed-based), but rendering walks the bracket top-to-bottom.
+ *
+ * Example for 8 → 4 → 2 → 1 with top-half-vs-bottom-half pairing:
+ *   R16: s1, s5, s3, s7, s2, s6, s4, s8
+ *   QF:  ç1, ç3, ç2, ç4
+ *   SF:  y1, y2
+ *   F:   f1
+ */
+function reorderRoundsForBracketDisplay(rounds: BracketRound[]): BracketRound[] {
+  const n = rounds.length;
+  if (n === 0) return rounds;
+
+  const displayOrders: number[][] = new Array(n);
+  displayOrders[n - 1] = rounds[n - 1].matches.map((_, i) => i);
+
+  for (let r = n - 2; r >= 0; r--) {
+    const nextDisplay = displayOrders[r + 1];
+    const nextMatchCount = rounds[r + 1].matches.length;
+    const current: number[] = [];
+    for (const j of nextDisplay) {
+      current.push(j);
+      current.push(j + nextMatchCount);
+    }
+    displayOrders[r] = current;
+  }
+
+  return rounds.map((round, r) => ({
+    ...round,
+    matches: displayOrders[r]
+      .map(idx => round.matches[idx])
+      .filter((m): m is BracketMatch => m != null),
   }));
 }
