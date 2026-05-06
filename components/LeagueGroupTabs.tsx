@@ -7,7 +7,7 @@ interface LeagueGroupTabsProps {
   onGroupChange: (id: string) => void;
 }
 
-/** Split "Grup A — Çarşamba" for compact mobile layout */
+/** Split labels like "Grup A — Subtitle" into two stacked lines on mobile */
 function GroupButtonContent({ label, compact }: { label: string; compact: boolean }) {
   const parts = label.split(' — ');
   if (compact && parts.length === 2) {

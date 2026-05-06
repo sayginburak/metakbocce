@@ -5,8 +5,7 @@ export interface SeasonInfo {
 }
 
 export const SEASONS: SeasonInfo[] = [
-  { id: "2026-bahar", label: "2026 Bahar", dataFile: "league_data_2026_bahar.json" },
-  { id: "2025-2026-kis", label: "2025-2026 Kış", dataFile: "league_data_v16.json" },
+  { id: "2026-bahar", label: "2026 Bahar Petank", dataFile: "league_data_2026_bahar.json" },
 ];
 
 export const DEFAULT_SEASON_ID = "2026-bahar";

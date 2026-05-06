@@ -12,8 +12,8 @@ export interface Player {
     played: number;
     won: number;
     lost: number;
-    legsWon: number;
-    legsLost: number;
+    pointsFor: number;
+    pointsAgainst: number;
     points: number;
   };
 }

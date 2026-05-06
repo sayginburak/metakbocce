@@ -18,7 +18,7 @@ const Standings: React.FC<StandingsProps> = ({ players, onPlayerClick, playOffSp
           <thead>
             <tr className="bg-slate-50 dark:bg-slate-900/50 text-slate-500 dark:text-slate-400 uppercase text-[9px] sm:text-[10px] tracking-wider leading-none">
               <th className="px-1 sm:px-2 py-1.5 sm:py-2 font-medium text-center w-7 sm:w-8">#</th>
-              <th className="px-1 sm:px-2 py-1.5 sm:py-2 font-medium max-w-[min(42vw,11rem)] sm:max-w-none">Oyuncu</th>
+              <th className="px-1 sm:px-2 py-1.5 sm:py-2 font-medium max-w-[min(42vw,11rem)] sm:max-w-none">Takım</th>
               <th className="px-0.5 sm:px-1 py-1.5 sm:py-2 font-medium text-center w-7 sm:w-8">O</th>
               <th className="px-0.5 sm:px-1 py-1.5 sm:py-2 font-medium text-center text-green-600 dark:text-green-400 w-7 sm:w-8">G</th>
               <th className="px-0.5 sm:px-1 py-1.5 sm:py-2 font-medium text-center text-red-500 dark:text-red-400 w-7 sm:w-8">M</th>
@@ -28,7 +28,7 @@ const Standings: React.FC<StandingsProps> = ({ players, onPlayerClick, playOffSp
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-700/50">
             {players.map((player, index) => {
-                const av = player.stats.legsWon - player.stats.legsLost;
+                const av = player.stats.pointsFor - player.stats.pointsAgainst;
                 const inPlayOffZone = playOffSpots != null && playOffSpots > 0 && index < playOffSpots;
                 return (
                   <tr

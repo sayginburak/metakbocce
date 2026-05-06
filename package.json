@@ -1,5 +1,5 @@
 {
-  "name": "metak-2025-2026-kış-dart-ligi",
+  "name": "metak-2026-bahar-petank-ligi",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -9,7 +9,7 @@
     "preview": "vite preview",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist",
-    "test:bahar": "node scripts/verify-bahar-scores.mjs"
+    "generate:bahar": "node scripts/generate-bahar-league.mjs"
   },
   "dependencies": {
     "lucide-react": "^0.554.0",

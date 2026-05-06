@@ -123,7 +123,7 @@ const App: React.FC = () => {
   useEffect(() => {
     if (!leagueData) return;
     const parts = [leagueData.leagueName, leagueData.leagueSubtitle].filter(Boolean);
-    document.title = parts.length ? parts.join(' — ') : 'Metak Dart Ligi';
+    document.title = parts.length ? parts.join(' — ') : 'Metak Petank Ligi';
   }, [leagueData]);
 
   const handleSeasonChange = (nextId: string) => {

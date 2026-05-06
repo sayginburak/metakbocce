@@ -29,7 +29,7 @@ const Schedule: React.FC<ScheduleProps> = ({ data, onPlayerClick }) => {
 
   const currentWeek = data.schedule[currentWeekIndex];
 
-  const leaguePrintLabel = [data.leagueName, data.leagueSubtitle].filter(Boolean).join(' — ') || 'Metak Dart Ligi';
+  const leaguePrintLabel = [data.leagueName, data.leagueSubtitle].filter(Boolean).join(' — ') || 'Metak Petank Ligi';
 
   const activeGroup = data.groups?.find((g) => g.id === activeGroupId);
 
@@ -50,10 +50,14 @@ const Schedule: React.FC<ScheduleProps> = ({ data, onPlayerClick }) => {
 
   const getPlayerName = (id: string) => data.players.find(p => p.id === id)?.name || "Bilinmiyor";
 
-  // Split matches into 3 rounds (assuming 3 matches per player per week)
+  // Split matches into sub-rounds. When a group is active, each sub-round has
+  // floor(groupSize / 2) matches (with 1 bye absorbed for odd-sized groups).
+  // Without an active group filter, fall back to the legacy 3-round split.
   const totalMatches = weekMatches.length;
-  const matchesPerRound = Math.ceil(totalMatches / 3) || 1;
-  
+  const matchesPerRound = activeGroup
+    ? Math.max(1, Math.floor(activeGroup.playerIds.length / 2))
+    : Math.max(1, Math.ceil(totalMatches / 3));
+
   const rounds = [];
   if (totalMatches > 0) {
       for (let i = 0; i < totalMatches; i += matchesPerRound) {
@@ -62,6 +66,18 @@ const Schedule: React.FC<ScheduleProps> = ({ data, onPlayerClick }) => {
   } else {
       rounds.push([]); // Handle empty weeks gracefully
   }
+
+  // Byes per sub-round: any team in the active group not appearing in this round.
+  // Empty for even-sized groups (e.g. Grup A, 12 takım).
+  const byesPerRound: string[][] = rounds.map((roundMatches) => {
+    if (!activeGroup) return [];
+    const playing = new Set<string>();
+    roundMatches.forEach((m) => {
+      playing.add(m.player1Id);
+      playing.add(m.player2Id);
+    });
+    return activeGroup.playerIds.filter((id) => !playing.has(id));
+  });
 
   const handlePrint = () => {
     window.print();
@@ -105,6 +121,21 @@ const Schedule: React.FC<ScheduleProps> = ({ data, onPlayerClick }) => {
                                 </div>
                                 <div className="flex-1 text-left text-base font-semibold text-black truncate pl-2">
                                     {getPlayerName(match.player2Id)}
+                                </div>
+                            </div>
+                        ))}
+                        {byesPerRound[roundIndex]?.map((byeId) => (
+                            <div key={`bye-${byeId}`} className="flex items-center justify-between border-b border-gray-200 pb-2 pt-1 last:border-0">
+                                <div className="flex-1 text-right text-base font-semibold text-black truncate pr-2">
+                                    {getPlayerName(byeId)}
+                                </div>
+                                <div className="mx-2 w-24 text-center">
+                                    <div className="font-mono text-sm font-bold border border-gray-800 px-2.5 py-1 bg-gray-100 rounded uppercase tracking-wider">
+                                        BAY
+                                    </div>
+                                </div>
+                                <div className="flex-1 text-left text-sm italic text-gray-600 truncate pl-2">
+                                    Hükmen galip
                                 </div>
                             </div>
                         ))}
@@ -227,6 +258,28 @@ const Schedule: React.FC<ScheduleProps> = ({ data, onPlayerClick }) => {
                             </div>
                         );
                     })}
+                    {byesPerRound[roundIndex]?.map((byeId) => (
+                        <div
+                            key={`bye-${byeId}`}
+                            className="flex items-center justify-between px-3 py-2.5 rounded-lg border border-amber-200/80 dark:border-amber-500/30 bg-amber-50/70 dark:bg-amber-950/20"
+                            title={`${getPlayerName(byeId)} — bay (hükmen galip)`}
+                        >
+                            <div
+                                className="flex-1 text-right text-sm font-semibold text-amber-800 dark:text-amber-300 truncate cursor-pointer hover:underline"
+                                onClick={() => onPlayerClick(byeId)}
+                            >
+                                {getPlayerName(byeId)}
+                            </div>
+                            <div className="mx-3 min-w-[50px] flex justify-center">
+                                <span className="inline-flex items-center px-2 py-0.5 rounded-md text-[10px] font-bold tracking-wider uppercase bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-300 border border-amber-300/60 dark:border-amber-500/40">
+                                    BAY
+                                </span>
+                            </div>
+                            <div className="flex-1 text-left text-xs italic text-amber-700/70 dark:text-amber-400/70 truncate">
+                                Hükmen galip
+                            </div>
+                        </div>
+                    ))}
                 </div>
             </div>
         ))}

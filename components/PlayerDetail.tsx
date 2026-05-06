@@ -70,10 +70,10 @@ const PlayerDetail: React.FC<PlayerDetailProps> = ({ player, data, onBack, onPla
             <div className="text-lg font-bold text-red-500 dark:text-red-400 leading-none">{player.stats.lost}</div>
           </div>
           <div className="bg-slate-50 dark:bg-slate-900/50 py-2 px-1 rounded border border-slate-200 dark:border-slate-700/50 flex flex-col items-center justify-center">
-             <div className="text-slate-500 text-[10px] uppercase font-bold tracking-wider mb-0.5">Averaj</div>
+             <div className="text-slate-500 text-[10px] uppercase font-bold tracking-wider mb-0.5">Skor Farkı</div>
             <div className="text-lg font-bold text-blue-600 dark:text-blue-300 leading-none">
-                {player.stats.legsWon - player.stats.legsLost > 0 ? '+' : ''}
-                {player.stats.legsWon - player.stats.legsLost}
+                {player.stats.pointsFor - player.stats.pointsAgainst > 0 ? '+' : ''}
+                {player.stats.pointsFor - player.stats.pointsAgainst}
             </div>
           </div>
         </div>

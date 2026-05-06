@@ -52,7 +52,7 @@ const Finals: React.FC<FinalsProps> = ({ data, onPlayerClick }) => {
   };
 
   const leaguePrintLabel =
-    [data.leagueName, data.leagueSubtitle].filter(Boolean).join(' — ') || 'Metak Dart Ligi';
+    [data.leagueName, data.leagueSubtitle].filter(Boolean).join(' — ') || 'Metak Petank Ligi';
 
   return (
     <div className="space-y-4 sm:space-y-6">

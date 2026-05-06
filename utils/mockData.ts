@@ -141,8 +141,8 @@ function jsonToLeagueData(rawData: JsonData): LeagueData {
       played: 0,
       won: 0,
       lost: 0,
-      legsWon: 0,
-      legsLost: 0,
+      pointsFor: 0,
+      pointsAgainst: 0,
       points: 0
     }
   }));
@@ -198,11 +198,21 @@ export function storeSeasonId(id: string): void {
   localStorage.setItem(SEASON_STORAGE_KEY, id);
 }
 
-/** Apply completed matches to player stats (no sorting). */
+/** Petanque target score; bye/walkover wins are recorded as this-to-zero. */
+const PETANQUE_WIN_SCORE = 13;
+
+/**
+ * Apply completed matches to player stats (no sorting).
+ *
+ * In odd-sized groups every sub-round has exactly one team sitting out (bye).
+ * A bye is treated as a default win for that team: +1 G, +2 P, score 13–0.
+ * Byes are only credited once the corresponding sub-round has at least one
+ * completed match, so future weeks don't pre-award points.
+ */
 export function applyMatchStats(data: LeagueData): Player[] {
   const newPlayers = data.players.map(p => ({
     ...p,
-    stats: { played: 0, won: 0, lost: 0, legsWon: 0, legsLost: 0, points: 0 }
+    stats: { played: 0, won: 0, lost: 0, pointsFor: 0, pointsAgainst: 0, points: 0 }
   }));
 
   data.schedule.forEach(week => {
@@ -214,10 +224,10 @@ export function applyMatchStats(data: LeagueData): Player[] {
         if (p1 && p2) {
           p1.stats.played += 1;
           p2.stats.played += 1;
-          p1.stats.legsWon += match.score1;
-          p1.stats.legsLost += match.score2;
-          p2.stats.legsWon += match.score2;
-          p2.stats.legsLost += match.score1;
+          p1.stats.pointsFor += match.score1;
+          p1.stats.pointsAgainst += match.score2;
+          p2.stats.pointsFor += match.score2;
+          p2.stats.pointsAgainst += match.score1;
 
           const loserPoints = match.isDefaultLoss ? 0 : 1;
           const winnerPoints = 2;
@@ -245,14 +255,64 @@ export function applyMatchStats(data: LeagueData): Player[] {
     });
   });
 
+  // Credit byes as default wins (only for groups that need a bye each round).
+  if (data.groups?.length) {
+    for (const group of data.groups) {
+      if (group.playerIds.length % 2 === 0) continue;
+      const byes = computeGroupByes(group, data.schedule);
+      for (const byeId of byes) {
+        const player = newPlayers.find(p => p.id === byeId);
+        if (!player) continue;
+        player.stats.played += 1;
+        player.stats.won += 1;
+        player.stats.points += 2;
+        player.stats.pointsFor += PETANQUE_WIN_SCORE;
+      }
+    }
+  }
+
   return newPlayers;
+}
+
+/**
+ * Compute byes that should be credited for an odd-sized group.
+ * Returns a flat list of player IDs (one entry per credited bye); a player
+ * who byes twice would appear twice. A bye is only credited if at least one
+ * match in that sub-round has been completed.
+ */
+function computeGroupByes(group: LeagueGroup, schedule: Week[]): string[] {
+  const result: string[] = [];
+  const groupSize = group.playerIds.length;
+  const subRoundSize = Math.floor(groupSize / 2);
+  if (subRoundSize === 0) return result;
+  const memberSet = new Set(group.playerIds);
+
+  for (const week of schedule) {
+    const groupMatches = week.matches.filter(
+      m => memberSet.has(m.player1Id) && memberSet.has(m.player2Id)
+    );
+    for (let i = 0; i < groupMatches.length; i += subRoundSize) {
+      const subRound = groupMatches.slice(i, i + subRoundSize);
+      const anyPlayed = subRound.some(m => m.isCompleted);
+      if (!anyPlayed) continue;
+      const playing = new Set<string>();
+      subRound.forEach(m => {
+        playing.add(m.player1Id);
+        playing.add(m.player2Id);
+      });
+      for (const id of group.playerIds) {
+        if (!playing.has(id)) result.push(id);
+      }
+    }
+  }
+  return result;
 }
 
 export function sortStandings(players: Player[]): Player[] {
   return [...players].sort((a, b) => {
     if (b.stats.points !== a.stats.points) return b.stats.points - a.stats.points;
-    const avA = a.stats.legsWon - a.stats.legsLost;
-    const avB = b.stats.legsWon - b.stats.legsLost;
+    const avA = a.stats.pointsFor - a.stats.pointsAgainst;
+    const avB = b.stats.pointsFor - b.stats.pointsAgainst;
     if (avB !== avA) return avB - avA;
     if (b.stats.won !== a.stats.won) return b.stats.won - a.stats.won;
     return a.name.localeCompare(b.name, "tr");
