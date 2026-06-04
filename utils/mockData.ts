@@ -233,7 +233,10 @@ export function applyMatchStats(data: LeagueData): Player[] {
           const winnerPoints = 2;
           const drawPoints = 1;
 
-          if (match.score1 === 0 && match.score2 === 0) {
+          if (match.isDefaultLoss && match.score1 === 0 && match.score2 === 0) {
+            p1.stats.lost += 1;
+            p2.stats.lost += 1;
+          } else if (match.score1 === 0 && match.score2 === 0) {
             p1.stats.points += drawPoints;
             p2.stats.points += drawPoints;
           } else if (match.score1 > match.score2) {
