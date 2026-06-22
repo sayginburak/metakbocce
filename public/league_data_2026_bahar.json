@@ -3,7 +3,7 @@
   "leagueSubtitle": "Bahar Petank Ligi",
   "currentWeek": 5,
   "playOffSpots": 8,
-  "showFinals": false,
+  "showFinals": true,
   "groups": [
     {
       "id": "a",

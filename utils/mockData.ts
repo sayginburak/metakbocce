@@ -394,12 +394,9 @@ export function getMatchCode(roundName: string, matchIdx: number): string {
  *   s1: 1A vs 8B, s2: 2A vs 7B, s3: 3A vs 6B, s4: 4A vs 5B,
  *   s5: 5A vs 4B, s6: 6A vs 3B, s7: 7A vs 2B, s8: 8A vs 1B.
  *
- * Later rounds use a "top-half vs bottom-half" pairing so the strongest
- * league-phase performers keep facing the weakest remaining opponents until
- * the final. For n matches in the previous round, new match i pairs
- * prev[i] with prev[i + n/2]:
- *   Çeyrek Final: ç1 = s1 & s5, ç2 = s2 & s6, ç3 = s3 & s7, ç4 = s4 & s8.
- *   Yarı Final:   y1 = ç1 & ç3, y2 = ç2 & ç4.
+ * Later rounds follow the published bracket layout:
+ *   Çeyrek Final: ç1 = s1 & s7, ç2 = s3 & s5, ç3 = s4 & s6, ç4 = s2 & s8.
+ *   Yarı Final:   y1 = ç1 & ç2, y2 = ç3 & ç4.
  *   Final:        f1 = y1 & y2.
  *
  * Any results provided in data.finals.rounds[i].matches override the auto-derivation.
@@ -445,13 +442,11 @@ export function getFinalsBracket(data: LeagueData, spots: number = 8): BracketRo
         player1Label = `${i + 1}A`;
         player2Label = `${spots - i}B`;
       } else {
-        // Top-half vs bottom-half pairing: match i of this round pulls
-        // prev[i] and prev[i + n/2], so seed #1 stays away from seed #2
-        // (and group A's #1 from group B's #1) as long as possible.
         const prev = rounds[r - 1];
-        const prevHalf = prev.matches.length / 2;
-        const m1Idx = i;
-        const m2Idx = i + prevHalf;
+        const sources = r === 1 && spots === 8
+          ? [[0, 6], [2, 4], [3, 5], [1, 7]][i]
+          : [i * 2, i * 2 + 1];
+        const [m1Idx, m2Idx] = sources;
         const m1 = prev.matches[m1Idx];
         const m2 = prev.matches[m2Idx];
         player1Id = m1?.winnerId ?? null;
@@ -498,9 +493,9 @@ export function getFinalsBracket(data: LeagueData, spots: number = 8): BracketRo
  * next-round match are adjacent in the display. Generation order is kept
  * logical (seed-based), but rendering walks the bracket top-to-bottom.
  *
- * Example for 8 → 4 → 2 → 1 with top-half-vs-bottom-half pairing:
- *   R16: s1, s5, s3, s7, s2, s6, s4, s8
- *   QF:  ç1, ç3, ç2, ç4
+ * Example for 8 → 4 → 2 → 1 with the published pairing layout:
+ *   R16: s1, s7, s3, s5, s4, s6, s2, s8
+ *   QF:  ç1, ç2, ç3, ç4
  *   SF:  y1, y2
  *   F:   f1
  */
@@ -516,8 +511,13 @@ function reorderRoundsForBracketDisplay(rounds: BracketRound[]): BracketRound[] 
     const nextMatchCount = rounds[r + 1].matches.length;
     const current: number[] = [];
     for (const j of nextDisplay) {
-      current.push(j);
-      current.push(j + nextMatchCount);
+      if (r === 0 && rounds[r].matches.length === 8) {
+        const sourcePairs = [[0, 6], [2, 4], [3, 5], [1, 7]];
+        current.push(...sourcePairs[j]);
+      } else {
+        current.push(j * 2);
+        current.push(j * 2 + 1);
+      }
     }
     displayOrders[r] = current;
   }
